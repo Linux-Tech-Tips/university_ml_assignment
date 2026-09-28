@@ -1,3 +1,7 @@
+---
+geometry: margin=1in
+...
+
 # CT4101 Machine Learning Project Proposal
 
 **Martin Klacer, University of Galway**
@@ -25,10 +29,10 @@ mainly concerning the dataset, task and intended evaluation.
 
 **Dataset Accessible Through:** Kaggle Datasets at [https://www.kaggle.com/datasets/nltkdata/brown-corpus](https://www.kaggle.com/datasets/nltkdata/brown-corpus)
 
-**Dataset License/Usability:** As per the collected [NLTK dataset licensing information](https://github.com/nltk/nltk_data/blob/gh-pages/DATASET-LICENSES.md),
+**Dataset License/Usability:** As per the NLTK dataset licensing information ([https://github.com/nltk/nltk_data/blob/gh-pages/DATASET-LICENSES.md](https://github.com/nltk/nltk_data/blob/gh-pages/DATASET-LICENSES.md)),
 the Brown Corpus can be used for educational purposes, with usage being restricted to non-commercial purposes.
 Confirmed through the linguistics group ICAME (International Computer Archive of Modern and Medieval English), who are the distributor of the corpus,
-that [academic use is permitted](https://icame.info/icame-corpora/).
+that academic use is permitted ([https://icame.info/icame-corpora/](https://icame.info/icame-corpora/)).
 
 **Key Data Risks:** Primary data risks include incorrectly tagged data and insufficient data for the training stage (including joint training of word embeddings).
 Incorrectly tagged data should be minimal as the dataset was reviewed by humans and has been in use for decades, but there is still some risk/uncertainty.
