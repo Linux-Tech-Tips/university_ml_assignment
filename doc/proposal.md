@@ -9,7 +9,7 @@ fontsize: 10pt
 
 **Author:** Martin Klacer, University of Galway
 
-**Project Repository:** [TBD](TBD)
+**Project Repository:** [https://github.com/Linux-Tech-Tips/university_ml_assignment](https://github.com/Linux-Tech-Tips/university_ml_assignment)
 
 ## Task
 
