@@ -12,27 +12,32 @@ class Metrics:
         self.model = model
         self.dataset = dataset
 
-    def get_val_accuracy(self, fold: int):
+    def get_val_accuracy(self, fold: int, quiet: bool = False):
         subset = self._get_val_subset(fold)
         accuracy, correct_count, total_count = self._get_accuracy(subset)
-        print(f"Metrics: accuracy {accuracy:.4f} ({correct_count}/{total_count} tagged correct) on {fold}-th fold")
+        if not quiet:
+            print(f"Metrics: accuracy {accuracy:.4f} ({correct_count}/{total_count} tagged correct) on {fold}-th fold")
         return accuracy, correct_count, total_count
 
-    def get_val_macro_f1(self, fold: int):
+    def get_val_macro_f1(self, fold: int, quiet: bool = False):
         subset = self._get_val_subset(fold)
         macro_f1, scores = self._get_macro_f1(subset)
-        print(f"Metrics: Macro-F1 {macro_f1:.4f}")
+        if not quiet:
+            print(f"Metrics: Macro-F1 {macro_f1:.4f}")
         return macro_f1, scores
 
-    def get_test_accuracy(self):
+    def get_test_accuracy(self, quiet: bool = False):
         subset = self._get_test_subset()
         accuracy, correct_count, total_count = self._get_accuracy(subset)
-        print(f"Metrics: accuracy {accuracy:.4f} ({correct_count}/{total_count} tagged correct) on test set")
+        if not quiet:
+            print(f"Metrics: accuracy {accuracy:.4f} ({correct_count}/{total_count} tagged correct) on test set")
+        return accuracy, correct_count, total_count
 
-    def get_test_macro_f1(self):
+    def get_test_macro_f1(self, quiet: bool = False):
         subset = self._get_test_subset()
         macro_f1, scores = self._get_macro_f1(subset)
-        print(f"Metrics: Macro-F1 {macro_f1:.4f}")
+        if not quiet:
+            print(f"Metrics: Macro-F1 {macro_f1:.4f}")
         return macro_f1, scores
 
 

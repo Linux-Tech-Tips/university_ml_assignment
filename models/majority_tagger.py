@@ -23,6 +23,12 @@ class MajorityTagger(Model):
 
     def fit(self, dataset: pd.DataFrame, fold: int = -1):
         """Runs the majority tagger training excluding a given fold, or on the whole training set if 'fold' is '-1' (default)"""
+
+        # reset before new call to fit
+        self.tags = {}
+        self.most_common = "N/A"
+
+        # select training data subset and run training
         if fold >= 0:
             train_data = dataset[dataset["subset"].eq("train") & dataset["fold_id"].ne(fold)]
         else:
@@ -39,6 +45,8 @@ class MajorityTagger(Model):
         for word in state:
             majority_tag = max(state[word], key=state[word].get)
             self.tags[word] = majority_tag
+        # assign most common tag vased on processed tags dict
+        self.most_common = max(set(self.tags.values()), key=list(self.tags.values()).count)
 
     def _train_step(self, text: list, tags: list, state: dict):
         if len(text) != len(tags):
