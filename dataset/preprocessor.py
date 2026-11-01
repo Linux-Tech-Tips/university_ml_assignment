@@ -58,10 +58,22 @@ class DatasetPipeline:
                 for text in folds[i]:
                     rows.append([text, label, DatasetPipeline.TRAIN_LABEL, i, None, None])
             # add rows to 'processed' dataframe
-            self.processed = pd.concat([self.processed, pd.DataFrame(rows, columns=DatasetPipeline.PROCESSED_COLUMNS)])            
+            self.processed = pd.concat([self.processed, pd.DataFrame(rows, columns=DatasetPipeline.PROCESSED_COLUMNS)], ignore_index=True)
 
     def _preprocess_dataset(self):
-        # TODO Implement pre-processing as described in dataset audit
-        pass
-
+        for i in range(len(self.processed)):
+            # custom tokenisation of the raw text
+            raw_text = self.processed.loc[i]["raw_text"]
+            tokens = [(word.rsplit("/")[0], word.rsplit("/")[1]) for word in raw_text.split(" ")]
+            tokenized_text = []
+            tokenized_tags = []
+            for token in tokens:
+                tokenized_text.append(token[0].strip())
+                # modifying the POS tags as specified in the dataset audit
+                tag = token[1].strip().replace("fw-", "").replace("-tl", "").replace("-hl", "").replace("-nc", "").replace("-n", "")
+                if "+" in tag:
+                    tag = tag.split("+")[0]
+                tokenized_tags.append(tag)
+            self.processed.at[i, "tokenized_text"] = tokenized_text
+            self.processed.at[i, "tokenized_tags"] = tokenized_tags
 
