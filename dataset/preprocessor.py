@@ -64,7 +64,7 @@ class DatasetPipeline:
         for i in range(len(self.processed)):
             # custom tokenisation of the raw text
             raw_text = self.processed.loc[i]["raw_text"]
-            tokens = [(word.rsplit("/")[0], word.rsplit("/")[1]) for word in raw_text.split(" ")]
+            tokens = [(word.rsplit("/", 1)[0], word.rsplit("/", 1)[1]) for word in raw_text.split(" ")]
             tokenized_text = []
             tokenized_tags = []
             for token in tokens:
