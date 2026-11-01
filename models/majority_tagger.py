@@ -21,9 +21,12 @@ class MajorityTagger(Model):
                 outputs.append(self.most_common)
         return outputs
 
-    def fit(self, dataset: pd.DataFrame):
-        """Runs training"""
-        train_data = dataset[dataset["subset"] == "train"]
+    def fit(self, dataset: pd.DataFrame, fold: int = -1):
+        """Runs the majority tagger training excluding a given fold, or on the whole training set if 'fold' is '-1' (default)"""
+        if fold >= 0:
+            train_data = dataset[dataset["subset"].eq("train") & dataset["fold_id"].ne(fold)]
+        else:
+            train_data = dataset[dataset["subset"].eq("train")]
         self._train(train_data)
 
     def _train(self, dataset: pd.DataFrame):
