@@ -3,7 +3,6 @@
 import pandas as pd
 
 from model import Model
-from metrics import Metrics
 
 
 class MajorityTagger(Model):
