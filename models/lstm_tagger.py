@@ -13,11 +13,14 @@ from vocab import Vocab
 # -> BiLSTMTagger class which uses a BiLSTM class model, which includes a forward_pass impl calling the BiLSTM, a train function for N epochs with K-fold cross validation,
 #    as well as a function running train-val on a hyperparameter matrix to find optimal hyperparameters
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("DEBUG: Loaded LSTM tagger for device", DEVICE)
+
 class BiLSTMTagger(Model):
 
     def __init__(self, dataset: pd.DataFrame, learning_rate: float = 10**(-3), embedding_dim: int = 100, hidden_dim: int = 256, dropout_p: int = 0.4, lstm_layers: int = 2):
         self.vocab = Vocab(dataset)
-        self.model = BiLSTM(self.vocab.length(), self.vocab.tag_count(), embedding_dim, hidden_dim, dropout_p, lstm_layers)
+        self.model = BiLSTM(self.vocab.length(), self.vocab.tag_count(), embedding_dim, hidden_dim, dropout_p, lstm_layers).to(DEVICE)
         self.learning_rate = learning_rate
 
     def forward_pass(self, inputs: list) -> list:
@@ -29,9 +32,9 @@ class BiLSTMTagger(Model):
     def fit(self, dataset: pd.DataFrame, epochs: int):
 
         print("DEBUG: Starting fit")
-        sentences = [[self.vocab.get_token_id(x) for x in sentence] for sentence in dataset["tokenized_text"]]
+        sentences = [[self.vocab.get_token_id(x) for x in sentence] for sentence in dataset[dataset["subset"] == "train"]["tokenized_text"]]
         print("DEBUG: Processed sentences to ID")
-        tags = [[self.vocab.get_tag_id(x) for x in tag] for tag in dataset["tokenized_tags"]]
+        tags = [[self.vocab.get_tag_id(x) for x in tag] for tag in dataset[dataset["subset"] == "train"]["tokenized_tags"]]
         print("DEBUG: Processed tags to ID")
 
         loss_fn = nn.CrossEntropyLoss()
@@ -54,7 +57,7 @@ class BiLSTM(nn.Module):
 
     def forward(self, x: list):
         # turn input list into PyTorch-friendly tensor
-        x = torch.tensor(x)
+        x = torch.tensor(x, device=DEVICE)
         # 1. embed the input IDs
         embedded = self.embedding(x)
         # 2. dropout and prepare input for LSTM layer
@@ -77,7 +80,7 @@ class BiLSTM(nn.Module):
             # get prediction with current model
             prediction = self(sentence)
             # get loss with the given loss function
-            loss = loss_fn(prediction, torch.tensor(tag))
+            loss = loss_fn(prediction, torch.tensor(tag, device=DEVICE))
 
             # backward pass to accumulate loss function gradients
             loss.backward()
