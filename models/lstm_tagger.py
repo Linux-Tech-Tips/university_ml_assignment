@@ -28,16 +28,17 @@ class BiLSTMTagger(Model):
 
     def fit(self, dataset: pd.DataFrame, epochs: int):
 
-        sentences = [[self.vocab.get_token_id(x) for x in sentence] for sentence in dataset["tokenized_text"][:1000]]
+        print("DEBUG: Starting fit")
+        sentences = [[self.vocab.get_token_id(x) for x in sentence] for sentence in dataset["tokenized_text"]]
         print("DEBUG: Processed sentences to ID")
-        tags = [[self.vocab.get_tag_id(x) for x in tag] for tag in dataset["tokenized_tags"][:1000]]
+        tags = [[self.vocab.get_tag_id(x) for x in tag] for tag in dataset["tokenized_tags"]]
         print("DEBUG: Processed tags to ID")
 
         loss_fn = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
         for epoch in range(epochs):
-            print("DEBUG: Running epoch.,,")
+            print("DEBUG: Running epoch...")
             self.model.train_epoch(sentences, tags, loss_fn, optimizer)
             print(f"Epoch {epoch} done!")
 

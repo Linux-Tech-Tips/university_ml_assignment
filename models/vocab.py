@@ -12,6 +12,7 @@ class Vocab:
             for word in sentence:
                 vocab.add(word)
         self.vocab = ["UNK"] + sorted(list(vocab)) # 'UNK' added as token 0 to mark unknown words
+        self._vocab_map = {self.vocab[i]: i for i in range(len(self.vocab))} # dict-based maps for efficient token id lookups
 
         # Processing POS tag types
         tagset = set()
@@ -19,6 +20,7 @@ class Vocab:
             for tag in tags:
                 tagset.add(tag)
         self.tags = sorted(list(tagset))
+        self._tags_map = {self.tags[i]: i for i in range(len(self.tags))}
 
     def length(self):
         return len(self.vocab)
@@ -28,8 +30,8 @@ class Vocab:
 
 
     def get_token_id(self, token: str):
-        if token in self.vocab:
-            return self.vocab.index(token)
+        if token in self._vocab_map:
+            return self._vocab_map[token]
         return 0
 
     def get_token_by_id(self, token_id: int):
@@ -38,8 +40,8 @@ class Vocab:
         return self.vocab[0]
 
     def get_tag_id(self, tag: str):
-        if tag in self.tags:
-            return self.tags.index(tag)
+        if tag in self._tags_map:
+            return self._tags_map[tag]
         return None
 
     def get_tag_by_id(self, tag_id: int):
