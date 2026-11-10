@@ -24,7 +24,7 @@ class BiLSTMTagger(Model):
         self.learning_rate = learning_rate
 
     def forward_pass(self, inputs: list) -> list:
-        input_ids = [self.vocab.get_token_id(x) for x in inputs]
+        input_ids = torch.tensor([self.vocab.get_token_id(x) for x in inputs], device=DEVICE)
         output = self.model(input_ids)
         output_ids = torch.argmax(output, 1)
         return [self.vocab.get_tag_by_id(x) for x in output_ids]
@@ -32,9 +32,9 @@ class BiLSTMTagger(Model):
     def fit(self, dataset: pd.DataFrame, epochs: int):
 
         print("DEBUG: Starting fit")
-        sentences = [[self.vocab.get_token_id(x) for x in sentence] for sentence in dataset[dataset["subset"] == "train"]["tokenized_text"]]
+        sentences = [torch.tensor([self.vocab.get_token_id(x) for x in sentence], device=DEVICE) for sentence in dataset[dataset["subset"] == "train"]["tokenized_text"][:2000]]
         print("DEBUG: Processed sentences to ID")
-        tags = [[self.vocab.get_tag_id(x) for x in tag] for tag in dataset[dataset["subset"] == "train"]["tokenized_tags"]]
+        tags = [torch.tensor([self.vocab.get_tag_id(x) for x in tag], device=DEVICE) for tag in dataset[dataset["subset"] == "train"]["tokenized_tags"][:2000]]
         print("DEBUG: Processed tags to ID")
 
         loss_fn = nn.CrossEntropyLoss()
@@ -55,9 +55,11 @@ class BiLSTM(nn.Module):
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=lstm_layers, bidirectional=True, dropout=dropout_p, batch_first=True)
         self.out = nn.Linear(2 * hidden_dim, num_tags)
 
-    def forward(self, x: list):
-        # turn input list into PyTorch-friendly tensor
-        x = torch.tensor(x, device=DEVICE)
+    # TODO Add batched training to this in hopes of reducing training time
+    # TODO Alter training to properly use CV and Vocab to not leak test data
+    # TODO Add hyperparameter-finding function that runs through matrix and selects optimal ones, run it in notebook
+
+    def forward(self, x: torch.tensor):
         # 1. embed the input IDs
         embedded = self.embedding(x)
         # 2. dropout and prepare input for LSTM layer
@@ -69,7 +71,7 @@ class BiLSTM(nn.Module):
         network_out = self.out(lstm_out).squeeze(0)
         return network_out
 
-    def train_epoch(self, sentences: list, tags: list, loss_fn, optimizer):
+    def train_epoch(self, sentences: list[torch.tensor], tags: list[torch.tensor], loss_fn, optimizer):
         """Expects training data as a list of lists containing token IDs and corresponding list of lists with a tag ID for each token ID"""
 
         # 1. set model to train mode
@@ -80,7 +82,7 @@ class BiLSTM(nn.Module):
             # get prediction with current model
             prediction = self(sentence)
             # get loss with the given loss function
-            loss = loss_fn(prediction, torch.tensor(tag, device=DEVICE))
+            loss = loss_fn(prediction, tag)
 
             # backward pass to accumulate loss function gradients
             loss.backward()
