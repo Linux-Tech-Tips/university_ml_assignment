@@ -4,17 +4,32 @@ import torch
 from torch import nn
 
 from model import Model
+from vocab import Vocab
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class TransformerTagger(Model):
 
-    def __init__(self):
-        pass
+    def __init__(self, dataset: pd.DataFrame, excluded_fold: int = -1, learning_rate: float = 10**(-3),
+                num_blocks: int = 4, embedding_dim: int = 100, num_heads: int = 2, ff_dim: int = 256, dropout_p: float = 0.4):
+        if excluded_fold >= 0:
+            vocab_set = dataset[dataset["subset"].ne("test") & dataset["fold_id"].ne(excluded_fold)]
+        else:
+            vocab_set = dataset[dataset["subset"].ne("test")]
+        self.vocab = Vocab(vocab_set)
+        self.model = Transformer(self.vocab.length(), self.vocab.tag_count(), num_blocks, embedding_dim, num_heads, ff_dim, dropout_p).to(DEVICE)
+        self.learning_rate = learning_rate
+        print(f"Model Log: Initialised Transformer Model on device {DEVICE}")
 
     def forward_pass(self, inputs: list) -> list:
-        # TODO Implement
-        pass
+        input_ids = torch.tensor([self.vocab.get_token_id(x) for x in inputs], device=DEVICE).unsqueeze(0)
+        self.model.eval()
+        with torch.no_grad():
+            output = self.model(input_ids, torch.tensor([len(inputs)]))
+        output_ids = torch.argmax(output, -1).squeeze(0)
+        return [self.vocab.get_tag_by_id(x) for x in output_ids]
+
+    # TODO fit and hyperparameter tuning
 
 class Transformer(nn.Module):
 
@@ -119,7 +134,7 @@ class _MultiHeadAttention(nn.Module):
         values = torch.matmul(self.dropout(attn), v)
         # 4. concatenate separated heads
         # first transpose back to (batch, seq_len, num_heads, head_dim), then change shape to concat num_heads and head_dim
-        out = values.transpose(1, 2).view(batch, seq_len, -1)
+        out = values.transpose(1, 2).reshape(batch, seq_len, -1)
         # 5. project output values
         out = self.o_proj(out)
 
