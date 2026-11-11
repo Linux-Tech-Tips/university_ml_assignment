@@ -17,8 +17,46 @@ class TransformerTagger(Model):
         pass
 
 class Transformer(nn.Module):
-    # TODO Implement nn.Module built out of N transformer encoder blocks, ensure proper weight init, forward pass and backprop
-    pass
+
+    def __init__(self, num_terms: int, num_tags: int, num_blocks: int, embedding_dim: int, num_heads: int, ff_dim: int, dropout_p: float = 0.5):
+        super().__init__()
+        # word embeddings and positional encoding
+        self.embedding = nn.Embedding(num_terms, embedding_dim)
+        self.positional = self._get_positional_encoding(embedding_dim)
+        self.embedding_norm = nn.LayerNorm(embedding_dim)
+        # transformer encoder block sequence and outputs
+        self.dropout = nn.Dropout(dropout_p)
+        self.blocks = nn.ModuleList([_TransformerEncoderBlock(embedding_dim, num_heads, ff_dim, dropout_p) for i in range(num_blocks)])
+        self.final_norm = nn.LayerNorm(embedding_dim)
+        self.out = nn.Linear(embedding_dim, num_tags)
+
+    def forward(self, x: torch.tensor, lengths: torch.tensor):
+        # 1. create a padding mask based on the sequence lengths
+        batch, seq_len = x.shape
+        pad_mask = torch.arange(seq_len, device=x.device).unsqueeze(0) >= lengths.to(x.device).unsqueeze(-1)
+        pad_mask = pad_mask.view(batch, 1, 1, seq_len)
+        # 2. embed the input IDs
+        embedded = self.positional(self.embedding(x))
+        # 3. pre-transformer block layer norm and dropout
+        embedded = self.dropout(self.embedding_norm(embedded))
+        # 4. go through transformer blocks sequentially
+        transformer_out = embedded
+        for block in self.blocks:
+            transformer_out = block(transformer_out, pad_mask)
+        # 5. final layernorm and output projection to get tag logits
+        out = self.out(self.final_norm(transformer_out))
+        return out
+
+    def _get_positional_encoding(self, embedding_dim: int):
+        def encoding(x: torch.tensor):
+            _, seq_len, _ = x.shape # shape should be (batch, seq_len, embedding_dim)
+            # Using sinusoid positional encoding as per Vaswani et al. (2017)
+            pos = torch.arange(seq_len, device=x.device, dtype=torch.float32).unsqueeze(1)
+            div = 10000.0 ** (torch.arange(0, embedding_dim, 2, device=x.device, dtype=torch.float32) * 2 / embedding_dim)
+            x[..., 0::2] = x[..., 0::2] + torch.sin(pos / div)
+            x[..., 1::2] = x[..., 1::2] + torch.cos(pos / div)
+            return x
+        return encoding
 
 class _TransformerEncoderBlock(nn.Module):
 
@@ -79,11 +117,11 @@ class _MultiHeadAttention(nn.Module):
         attn = torch.softmax(attn, -1)
         # 3. matmul with V to get attention resulting values (and apply dropout for training)
         values = torch.matmul(self.dropout(attn), v)
-        # 4. project output values
-        out = self.o_proj(values)
-        # 5. concatenate separated heads
+        # 4. concatenate separated heads
         # first transpose back to (batch, seq_len, num_heads, head_dim), then change shape to concat num_heads and head_dim
-        out = out.transpose(1, 2).view(batch, seq_len, -1)
+        out = values.transpose(1, 2).view(batch, seq_len, -1)
+        # 5. project output values
+        out = self.o_proj(out)
 
         return out
 
