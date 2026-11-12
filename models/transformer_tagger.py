@@ -1,5 +1,7 @@
 # Second Candidate Model - Encoder-only Transformer
 
+import numpy as np
+import pandas as pd
 import torch
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_sequence
@@ -86,6 +88,72 @@ class TransformerTagger(Model):
             print(f" -> Accuracy: {acc}")
             print(f" -> Macro-F1: {f1}")
         return acc, f1
+
+    # NOTE: Taken from lstm_tagger.py for now, potentially clean and/or unify later
+    @staticmethod
+    def _tune_param(dataset: pd.DataFrame, model_params: list[dict], epochs: int, fraction: float, folds: list):
+        optimal = None
+        best_score = 0
+        best_score_std = None
+        table = []
+        # Go through each set of model params provided
+        for param_set in model_params:
+            f1s = []
+            # Gather F1 accuracy across all 5 folds
+            for fold in folds:
+                model = TransformerTagger(dataset, **param_set)
+                f1s.append(model.fit(dataset, epochs, fraction, fold)[1])
+            # Get mean and standard deviation of accuracies with each of the folds excluded
+            mean_f1 = np.mean(f1s)
+            stdev_f1 = np.std(f1s)
+            table.append((param_set, mean_f1, stdev_f1))
+            # Update findings if better score obtained
+            if mean_f1 > best_score:
+                optimal = param_set
+                best_score = mean_f1
+                best_score_std = stdev_f1
+        return optimal, best_score, best_score_std, table
+
+    # NOTE: Heavily inspired by lstm_tagger.py (also authored by me), potentially (time allowing) clean or unify later
+    @staticmethod
+    def tune(dataset: pd.DataFrame, epochs: int, fraction: float, folds: list,
+            learning_rates: list[float], num_blocks: list[int], embedding_dims: list[int], num_heads: list[int], ff_dims: list[int], dropout_ps: list[float]):
+
+        print(f"Model Log: Hyperparameter tuning started (fraction {fraction}, on {epochs} epochs)")
+        all_table = {}
+
+        # 1. Tune learning rate
+        optimal_lr, best_lr_f1, best_lr_std, table = TransformerTagger._tune_param(dataset, [{"learning_rate": x} for x in learning_rates], epochs, fraction, folds)
+        print(f"Model Log: Found best learning rate of {optimal_lr} with score {best_lr_f1} and standard deviation {best_lr_std}")
+        all_table["learning_rate"] = table
+
+        # 2. Tune number of encoder blocks
+        optimal_blocks, best_blocks_f1, best_blocks_std, table = TransformerTagger._tune_param(dataset, [{"num_blocks": x} for x in num_blocks], epochs, fraction, folds)
+        print(f"Model Log: Found best number of encoder blocks of {optimal_blocks} with score {best_blocks_f1} and standard deviation {best_blocks_std}")
+        all_table["num_blocks"] = table
+
+        # 3. Tune embedding dimensions paired with number of heads, as heads split the embedding dimension
+        heads_grid = [{"embedding_dim": dim, "num_heads": heads} for dim in embedding_dims for heads in num_heads]
+        optimal_heads, best_heads_f1, best_heads_std, table = TransformerTagger._tune_param(dataset, heads_grid, epochs, fraction, folds)
+        print(f"Model Log: Found best embedding with head count of {optimal_heads} with score {best_heads_f1} and standard deviation {best_heads_std}")
+        all_table["heads"] = table
+
+        # 4. Tune feedforward hidden dimension
+        optimal_ff, best_ff_f1, best_ff_std, table = TransformerTagger._tune_param(dataset, [{"ff_dim": x} for x in ff_dims], epochs, fraction, folds)
+        print(f"Model Log: Found best feedforward hidden dimension of {optimal_ff} with score {best_ff_f1} and standard deviation {best_ff_std}")
+        all_table["ff_dim"] = table
+
+        # 5. Tune dropout probability
+        optimal_dropout, best_dropout_f1, best_dropout_std, table = TransformerTagger._tune_param(dataset, [{"dropout_p": x} for x in dropout_ps], epochs, fraction, folds)
+        print(f"Model Log: Found best dropout probability of {optimal_dropout} with score {best_dropout_f1} and standard deviation {best_dropout_std}")
+        all_table["dropout_p"] = table
+
+        return {"learning_rate": (optimal_lr, best_lr_f1, best_lr_std),
+                "num_blocks": (optimal_blocks, best_blocks_f1, best_blocks_std),
+                "heads": (optimal_heads, best_heads_f1, best_heads_std),
+                "ff_dim": (optimal_ff, best_ff_f1, best_ff_std),
+                "dropout_p": (optimal_dropout, best_dropout_f1, best_dropout_std),
+                "case_table": all_table}
 
 
 class Transformer(nn.Module):
